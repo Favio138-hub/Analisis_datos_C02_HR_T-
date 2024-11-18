@@ -7,7 +7,7 @@ library(ggpubr)
 library(ggrepel)
 library(viridis)
 
-# Creamos nuestra data frame (En la caso la tenga; omitir este paso) 
+# Creamos nuestra data frame (En la caso que tenga; omitir este paso) 
 data <- data.frame(
   Fecha = c("15/10/2024", "17/10/2024", "23/10/2024", "29/10/2024", "31/10/2024", "04/11/2024"),
   Temperatura = c(37.3, 37.9, 34.1, 30.1, 36.6, 31.6),
