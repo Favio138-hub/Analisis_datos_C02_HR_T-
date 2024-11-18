@@ -1,0 +1,115 @@
+# Cargamos las librerias necesarias 
+library(ggplot2)
+library(tidyr)
+library(lubridate)
+library(scales)
+library(ggpubr)
+library(ggrepel)
+library(viridis)
+
+# Creamos nuestra data frame (En la caso la tenga; omitir este paso) 
+data <- data.frame(
+  Fecha = c("15/10/2024", "17/10/2024", "23/10/2024", "29/10/2024", "31/10/2024", "04/11/2024"),
+  Temperatura = c(37.3, 37.9, 34.1, 30.1, 36.6, 31.6),
+  Humedad_Relativa = c(50.7, 48.4, 59.1, 68.0, 52.3, 67.4),
+  CO2_ppm = c(440, 312, 296, 219, 212, 213)
+)
+
+# Convertir fecha a tipo (Date)
+data$Fecha <- dmy(data$Fecha)
+
+# Reorganizar los datos para graficar
+data_long <- pivot_longer(data, cols = c(Temperatura, Humedad_Relativa, CO2_ppm), names_to = "Variable", values_to = "Value")
+
+# Calculamos medias generales
+means <- aggregate(Value ~ Variable, data_long, mean)
+
+# Creamos el grafico (estilo a su prefencia) 
+p <- ggplot(data_long, aes(x = Fecha, y = Value, color = Variable, group = Variable)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 4, aes(shape = Variable)) +
+  geom_smooth(method = "loess", span = 0.75, se = TRUE, alpha = 0.2, linetype = "dashed") +
+  scale_color_viridis(discrete = TRUE, option = "D") +
+  scale_shape_manual(values = c(16, 17, 18)) +
+  scale_x_date(date_breaks = "3 days", date_labels = "%d/%m", expand = c(0.05, 0)) +
+  scale_y_continuous(sec.axis = sec_axis(~ . * 5, name = "CO2 (ppm)")) +
+  labs(title = "Análisis Multivariado de Parámetros Ambientales",
+       subtitle = "Evolución temporal de Temperatura, Humedad Relativa y CO2",
+       x = "Fecha",
+       y = "Temperatura (°C) / Humedad Relativa (%)",
+       caption = "Nota: Las líneas punteadas representan la tendencia suavizada con intervalos de confianza del 95%") +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", size = 18, hjust = 0.5, margin = margin(b = 10)),
+    plot.subtitle = element_text(size = 14, hjust = 0.5, margin = margin(b = 20)),
+    plot.caption = element_text(size = 10, hjust = 0, margin = margin(t = 10)),
+    axis.title = element_text(face = "bold", size = 12),
+    axis.text = element_text(size = 10),
+    legend.position = "top",
+    legend.title = element_blank(),
+    legend.background = element_rect(fill = "white", color = "gray80"),
+    legend.key = element_rect(fill = "white", color = NA),
+    panel.grid.major = element_line(color = "gray90"),
+    panel.grid.minor = element_blank(),
+    panel.border = element_rect(color = "gray80", fill = NA),
+    plot.margin = margin(t = 20, r = 20, b = 20, l = 20)
+  )
+
+# Agregar etiquetas de valor medio
+p <- p + geom_text_repel(
+  data = means,
+  aes(x = max(data$Fecha), y = Value, label = sprintf("Media: %.1f", Value)),
+  hjust = 1, vjust = 0, direction = "y", nudge_x = 1,
+  box.padding = unit(0.5, "lines"),
+  point.padding = unit(0.5, "lines"),
+  segment.color = "gray50"
+)
+
+# Agregamos los valores de correlación 
+cor_temp_hum <- cor(data$Temperatura, data$Humedad_Relativa)
+cor_temp_co2 <- cor(data$Temperatura, data$CO2_ppm)
+cor_hum_co2 <- cor(data$Humedad_Relativa, data$CO2_ppm)
+
+correlation_text <- sprintf(
+  "Correlaciones:\nTemp-Hum: %.2f\nTemp-CO2: %.2f\nHum-CO2: %.2f",
+  cor_temp_hum, cor_temp_co2, cor_hum_co2
+)
+
+p <- p + annotate(
+  "text", x = min(data$Fecha), y = max(data_long$Value),
+  label = correlation_text, hjust = 0, vjust = 1,
+  size = 3, fontface = "italic", color = "gray30"
+)
+
+# Agregar anotaciones estadísticas
+stats <- data_long %>%
+  group_by(Variable) %>%
+  summarise(
+    Mean = mean(Value),
+    SD = sd(Value),
+    Min = min(Value),
+    Max = max(Value)
+  )
+
+stats_text <- sprintf(
+  "Estadísticas descriptivas:\n%s: %.1f ± %.1f (%.1f - %.1f)\n%s: %.1f ± %.1f (%.1f - %.1f)\n%s: %.1f ± %.1f (%.1f - %.1f)",
+  stats$Variable[1], stats$Mean[1], stats$SD[1], stats$Min[1], stats$Max[1],
+  stats$Variable[2], stats$Mean[2], stats$SD[2], stats$Min[2], stats$Max[2],
+  stats$Variable[3], stats$Mean[3], stats$SD[3], stats$Min[3], stats$Max[3]
+)
+
+p <- p + annotate(
+  "text", x = mean(data$Fecha), y = min(data_long$Value),
+  label = stats_text, hjust = 0.5, vjust = 0,
+  size = 3, fontface = "italic", color = "gray30"
+)
+
+# Mostramos el grafico 
+print(p) 
+
+
+# Save the plot as a high-resolution image
+ggsave("advanced_environmental_analysis.png", p, width = 12, height = 8, dpi = 300)
+
+# Print summary statistics
+print(summary(data[, -1]))
