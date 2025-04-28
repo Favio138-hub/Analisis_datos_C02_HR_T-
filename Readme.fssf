@@ -1,3 +1,8 @@
+
+
+//Basicamente este es un pequeño script que hize para realizar análisis 
+de parametros ambientales, copiar y pegar en tu script de Rstudio.
+
 # Cargamos las librerias necesarias 
 library(ggplot2)
 library(tidyr)
